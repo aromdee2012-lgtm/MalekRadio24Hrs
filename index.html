@@ -123,7 +123,8 @@
 
                     <!-- Media Buttons -->
                     <div class="flex items-center gap-4">
-                        <button id="shuffleBtn" onclick="toggleShuffle()" class="p-2.5 rounded-full text-slate-400 hover:text-amber-500 transition-colors text-sm" title="สุ่มเพลง">
+                        <!-- ปุ่มสุ่มเพลง (เปิดใช้งานเป็นค่าเริ่มต้นให้แล้ว) -->
+                        <button id="shuffleBtn" onclick="toggleShuffle()" class="p-2.5 rounded-full text-amber-500 transition-colors text-sm font-bold" title="สุ่มเพลง">
                             <i class="fa-solid fa-shuffle"></i>
                         </button>
 
@@ -139,7 +140,7 @@
                             <i class="fa-solid fa-forward-step"></i>
                         </button>
 
-                        <button id="loopBtn" onclick="toggleLoop()" class="p-2.5 rounded-full text-amber-500 transition-colors text-sm" title="เล่นวนลูปทั้งลิสต์">
+                        <button id="loopBtn" onclick="toggleLoop()" class="p-2.5 rounded-full text-amber-500 transition-colors text-sm font-bold" title="เล่นวนลูปทั้งลิสต์">
                             <i class="fa-solid fa-repeat"></i>
                         </button>
                     </div>
@@ -206,11 +207,10 @@
         let isPlaying = false;
         let isPlaylistMode = false;
         let currentSongIndex = 0;
-        let isShuffle = false;
+        let isShuffle = true; // เปิดโหมดสุ่มเป็นค่าเริ่มต้นทันที!
         let isLoop = true;
         let myPlaylist = [];
 
-        // 🌟 จุดที่ลุงแจ่มใส่แค่ "ชื่อโฟลเดอร์ (Identifier)" บน Archive.org อันเดียวจบ!
         const ARCHIVE_IDENTIFIER = "005_20261024"; 
 
         async function loadArchivePlaylist() {
@@ -218,11 +218,9 @@
                 const res = await fetch(`https://archive.org/metadata/${ARCHIVE_IDENTIFIER}`);
                 const data = await res.json();
                 
-                // กรองเอาเฉพาะไฟล์ที่เป็นนามสกุล .mp3 อัตโนมัติ
                 const mp3Files = data.files.filter(f => f.name.toLowerCase().endsWith('.mp3'));
                 
                 myPlaylist = mp3Files.map(f => {
-                    // ถอดรหัสชื่อไฟล์ให้อ่านง่ายเป็นภาษาไทย
                     let cleanName = decodeURIComponent(f.name).replace('.mp3', '');
                     return {
                         name: cleanName,
@@ -236,7 +234,6 @@
             }
         }
 
-        // เล่นจบเพลง สั่งเล่นเพลงถัดไปให้อัตโนมัติ (Auto Next)
         audio.addEventListener('ended', () => {
             if (isPlaylistMode) {
                 playNextSong();
@@ -352,13 +349,19 @@
             
             if(myPlaylist.length === 0) {
                 const listContainer = document.getElementById('stationList');
-                listContainer.innerHTML = '<div class="col-span-2 text-center text-xs text-slate-400 py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังดึงรายชื่อ 500 เพลงอัตโนมัติ...</div>';
+                listContainer.innerHTML = '<div class="col-span-2 text-center text-xs text-slate-400 py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังดึงรายชื่อเพลงอัตโนมัติ...</div>';
                 await loadArchivePlaylist();
             }
 
             renderPlaylistUI();
             if(myPlaylist.length > 0) {
-                playSong(0);
+                // ถ้าเปิดโหมดสุ่มไว้ จะสุ่มเลือกเพลงแรกทันที ไม่ให้ซ้ำซากจำเจ!
+                if (isShuffle) {
+                    currentSongIndex = Math.floor(Math.random() * myPlaylist.length);
+                } else {
+                    currentSongIndex = 0;
+                }
+                playSong(currentSongIndex);
             }
         }
 
@@ -411,7 +414,12 @@
             if (!isPlaylistMode || myPlaylist.length === 0) return;
 
             if (isShuffle) {
-                currentSongIndex = Math.floor(Math.random() * myPlaylist.length);
+                // สุ่มเพลงถัดไปแบบไม่ซ้ำตัวเดิม (ถ้าเป็นไปได้) หรือสุ่มจากทั้งหมด
+                let nextIdx;
+                do {
+                    nextIdx = Math.floor(Math.random() * myPlaylist.length);
+                } while (nextIdx === currentSongIndex && myPlaylist.length > 1);
+                currentSongIndex = nextIdx;
             } else {
                 currentSongIndex++;
                 if (currentSongIndex >= myPlaylist.length) {
@@ -425,9 +433,13 @@
         function playPrevSong() {
             if (!isPlaylistMode || myPlaylist.length === 0) return;
 
-            currentSongIndex--;
-            if (currentSongIndex < 0) {
-                currentSongIndex = myPlaylist.length - 1;
+            if (isShuffle) {
+                currentSongIndex = Math.floor(Math.random() * myPlaylist.length);
+            } else {
+                currentSongIndex--;
+                if (currentSongIndex < 0) {
+                    currentSongIndex = myPlaylist.length - 1;
+                }
             }
             playSong(currentSongIndex);
         }
@@ -496,8 +508,12 @@
             setTimeout(() => osc.stop(), 500);
         }
 
-        // เริ่มต้นโหลดรายชื่อเพลงอัตโนมัติทันทีที่เปิดเว็บ
-        loadArchivePlaylist();
+        // โหลดลิสต์เพลงอัตโนมัติ และตั้งค่าให้สุ่มเล่นเพลงแรกทันทีเมื่อเข้าเว็บ!
+        loadArchivePlaylist().then(() => {
+            if (myPlaylist.length > 0) {
+                currentSongIndex = Math.floor(Math.random() * myPlaylist.length);
+            }
+        });
         fetchStations();
     </script>
 </body>
