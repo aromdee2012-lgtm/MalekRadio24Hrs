@@ -1,0 +1,21 @@
+{
+  "name": "malek-radio-24hrs",
+  "version": "1.0.0",
+  "description": "Malek Radio 24Hrs Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "productName": "Malek Radio 24Hrs",
+    "win": {
+      "icon": "icon.ico"
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.0"
+  }
+}
